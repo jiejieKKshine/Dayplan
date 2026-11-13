@@ -1,0 +1,11 @@
+const vm=require('node:vm'),fs=require('node:fs'),assert=require('node:assert/strict');
+const elements=new Map(),storage=new Map();function el(){return {value:'',innerHTML:'',classList:{add(){}},style:{},dataset:{},before(){},focus(){},addEventListener(){}}}const $=id=>{if(!elements.has(id))elements.set(id,el());return elements.get(id)};const handlers={};let allow=true,saveOK=true;
+const ctx=vm.createContext({$,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)},document:{createElement:el,querySelectorAll:()=>[],addEventListener:(n,f)=>handlers[n]=f},importButton:{},importDialog:{showModal(){},addEventListener(n,f){this[n]=f}},candidates:[1],parsedText:'old',esc:String,crypto:{randomUUID:()=>String(Math.random())},toast(){},confirm:()=>allow,events:[{id:'e1',title:'测试'}],save:()=>saveOK,render(){}});
+vm.runInContext(fs.readFileSync('dist/enhancements.js','utf8'),ctx);
+$('importText').value='旧内容';ctx.importButton.onclick();assert.equal($('importText').value,'');
+$('importText').value='明天讨论项目';$('saveDraft').onclick();assert.equal(JSON.parse(storage.get('daynest-import-drafts-v1')).length,1);
+$('saveDraft').onclick();assert.equal(JSON.parse(storage.get('daynest-import-drafts-v1')).length,1);
+ctx.importButton.onclick();assert.equal($('importText').value,'');assert.match($('draftList').innerHTML,/明天讨论项目/);
+$('importText').value='未保存';ctx.importDialog.close();assert.equal($('importText').value,'');assert.equal(JSON.parse(storage.get('daynest-import-drafts-v1')).length,1);
+allow=false;ctx.deleteSchedule('e1');assert.equal(ctx.events.length,1);allow=true;saveOK=false;ctx.deleteSchedule('e1');assert.equal(ctx.events.length,1);saveOK=true;ctx.deleteSchedule('e1');assert.equal(ctx.events.length,0);
+ctx.writeDrafts([]);assert.equal(ctx.readDrafts().length,0);console.log('Draft persistence, reset, deduplication and safe event deletion checks passed');
